@@ -19,8 +19,8 @@ import { LayerSnapshot, LayerUpdateMessage } from '../types/layer.types.js';
  *   layer:{layerId}:updates  — LayerUpdateMessage JSON
  */
 @Injectable()
-export class LayerStoreService implements OnModuleDestroy {
-  private readonly logger = new Logger(LayerStoreService.name);
+export class StoreService implements OnModuleDestroy {
+  private readonly logger = new Logger(StoreService.name);
   private readonly redis: Redis;
   private readonly redisSub: Redis;
   private isSubscribed = false;

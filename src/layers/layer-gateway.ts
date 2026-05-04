@@ -8,7 +8,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { LayerConfigService } from './config/layer-config.service.js';
-import { LayerStoreService } from './store/layer-store.service.js';
+import { StoreService } from './store/layer-store.service.js';
 import { LayerUpdateMessage } from './types/layer.types.js';
 
 /**
@@ -36,7 +36,7 @@ export class LayerGateway implements OnModuleInit {
 
   constructor(
     private readonly configService: LayerConfigService,
-    private readonly store: LayerStoreService,
+    private readonly store: StoreService,
   ) {}
 
   // ---------------------------------------------------------------------------

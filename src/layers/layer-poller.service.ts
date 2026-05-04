@@ -10,7 +10,7 @@ import { catchError, exhaustMap, takeUntil } from 'rxjs/operators';
 import { ExternalLayerClientService } from './external-layer-client.service.js';
 import { computeLayerHash } from './utils/layer-hash.util.js';
 import { LayerConfigService } from './config/layer-config.service.js';
-import { LayerStoreService } from './store/layer-store.service.js';
+import { StoreService } from './store/layer-store.service.js';
 import {
   LayerConfig,
   LayerSnapshot,
@@ -55,7 +55,7 @@ export class LayerPollerService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly configService: LayerConfigService,
     private readonly externalClient: ExternalLayerClientService,
-    private readonly store: LayerStoreService,
+    private readonly store: StoreService,
   ) {}
 
   // ---------------------------------------------------------------------------
