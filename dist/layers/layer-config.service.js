@@ -13,23 +13,8 @@ let LayerConfigService = class LayerConfigService {
     layers = [
         {
             id: 'roads',
-            url: process.env['LAYER_ROADS_URL'] ??
-                `${this.mockApiBaseUrl}/mock/roads`,
-            intervalMs: 60000,
-            enabled: true,
-        },
-        {
-            id: 'weather',
-            url: process.env['LAYER_WEATHER_URL'] ??
-                `${this.mockApiBaseUrl}/mock/weather`,
-            intervalMs: 60000,
-            enabled: true,
-        },
-        {
-            id: 'vehicles',
-            url: process.env['LAYER_VEHICLES_URL'] ??
-                `${this.mockApiBaseUrl}/mock/vehicles`,
-            intervalMs: 60000,
+            url: process.env['LAYER_ROADS_URL'] ?? `${this.mockApiBaseUrl}/mock/roads`,
+            intervalMs: 10000,
             enabled: true,
         },
     ];

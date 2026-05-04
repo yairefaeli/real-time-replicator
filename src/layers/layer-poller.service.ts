@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { EMPTY, Observable, Subject, Subscription, from, timer } from 'rxjs';
 import { catchError, exhaustMap, takeUntil } from 'rxjs/operators';
@@ -6,7 +11,11 @@ import { ExternalLayerClientService } from './external-layer-client.service.js';
 import { computeLayerHash } from './layer-hash.util.js';
 import { LayerConfigService } from './layer-config.service.js';
 import { LayerStoreService } from './layer-store.service.js';
-import { LayerConfig, LayerSnapshot, LayerUpdateMessage } from './layer.types.js';
+import {
+  LayerConfig,
+  LayerSnapshot,
+  LayerUpdateMessage,
+} from './layer.types.js';
 
 /**
  * Placeholder normalisation function.
@@ -121,14 +130,18 @@ export class LayerPollerService implements OnModuleInit, OnModuleDestroy {
     lockTtlMs: number,
   ): Promise<void> {
     try {
-      // 1. Acquire distributed lock
-      const acquired = await this.store.tryAcquireLayerLock(
+      // 1. Acquire or renew distributed lock
+      const acquired = await this.store.tryAcquireOrRenewLayerLock(
         layer.id,
         this.instanceId,
         lockTtlMs,
       );
-      if (!acquired) return; // Another pod is handling this layer
-
+      if (!acquired) {
+        this.logger.debug(
+          `Layer "${layer.id}" lock not acquired — another pod is handling this layer.`,
+        );
+        return; // Another pod is handling this layer
+      }
       // 2. Fetch external data
       const rawData = await this.externalClient.fetchLayerData(layer.url);
 
@@ -140,7 +153,9 @@ export class LayerPollerService implements OnModuleInit, OnModuleDestroy {
       const existingHash = await this.store.getHash(layer.id);
 
       if (newHash === existingHash) {
-        this.logger.debug?.(`Layer "${layer.id}" unchanged — skipping publish.`);
+        this.logger.debug?.(
+          `Layer "${layer.id}" unchanged — skipping publish.`,
+        );
         return;
       }
 
@@ -160,3 +175,16 @@ export class LayerPollerService implements OnModuleInit, OnModuleDestroy {
       const message: LayerUpdateMessage = {
         layerId: layer.id,
         data: normalized,
+        timestamp: now,
+      };
+      await this.store.publishLayerUpdate(layer.id, message);
+
+      this.logger.log(`Layer "${layer.id}" updated and published.`);
+    } catch (error) {
+      this.logger.error(
+        `Error polling layer "${layer.id}": ${(error as Error).message}`,
+      );
+      // Error is caught here — the outer timer stream stays alive.
+    }
+  }
+}

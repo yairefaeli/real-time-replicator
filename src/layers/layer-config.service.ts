@@ -17,27 +17,26 @@ export class LayerConfigService {
     {
       id: 'roads',
       url:
-        process.env['LAYER_ROADS_URL'] ??
-        `${this.mockApiBaseUrl}/mock/roads`,
-      intervalMs: 1000,
+        process.env['LAYER_ROADS_URL'] ?? `${this.mockApiBaseUrl}/mock/roads`,
+      intervalMs: 10000,
       enabled: true,
     },
-    {
-      id: 'weather',
-      url:
-        process.env['LAYER_WEATHER_URL'] ??
-        `${this.mockApiBaseUrl}/mock/weather`,
-      intervalMs: 5000,
-      enabled: true,
-    },
-    {
-      id: 'vehicles',
-      url:
-        process.env['LAYER_VEHICLES_URL'] ??
-        `${this.mockApiBaseUrl}/mock/vehicles`,
-      intervalMs: 1000,
-      enabled: true,
-    },
+    // {
+    //   id: 'weather',
+    //   url:
+    //     process.env['LAYER_WEATHER_URL'] ??
+    //     `${this.mockApiBaseUrl}/mock/weather`,
+    //   intervalMs: 50000,
+    //   enabled: true,
+    // },
+    // {
+    //   id: 'vehicles',
+    //   url:
+    //     process.env['LAYER_VEHICLES_URL'] ??
+    //     `${this.mockApiBaseUrl}/mock/vehicles`,
+    //   intervalMs: 10000,
+    //   enabled: true,
+    // },
   ];
 
   /** Return all configured layers (enabled and disabled). */

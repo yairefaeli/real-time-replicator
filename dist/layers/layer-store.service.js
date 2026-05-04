@@ -44,9 +44,18 @@ let LayerStoreService = LayerStoreService_1 = class LayerStoreService {
     async setHash(layerId, hash) {
         await this.redis.set(`layer:${layerId}:hash`, hash);
     }
-    async tryAcquireLayerLock(layerId, instanceId, ttlMs) {
-        const result = await this.redis.set(`layer:${layerId}:lock`, instanceId, 'PX', ttlMs, 'NX');
-        return result === 'OK';
+    async tryAcquireOrRenewLayerLock(layerId, instanceId, ttlMs) {
+        const result = await this.redis.eval(`
+        local currentOwner = redis.call("GET", KEYS[1])
+
+        if not currentOwner or currentOwner == ARGV[1] then
+          redis.call("SET", KEYS[1], ARGV[1], "PX", ARGV[2])
+          return 1
+        end
+
+        return 0
+      `, 1, `layer:${layerId}:lock`, instanceId, ttlMs);
+        return result === 1;
     }
     async publishLayerUpdate(layerId, message) {
         await this.redis.publish(`layer:${layerId}:updates`, JSON.stringify(message));

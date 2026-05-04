@@ -10,7 +10,7 @@ export declare class LayerStoreService implements OnModuleDestroy {
     setLatest(layerId: string, snapshot: LayerSnapshot): Promise<void>;
     getHash(layerId: string): Promise<string | null>;
     setHash(layerId: string, hash: string): Promise<void>;
-    tryAcquireLayerLock(layerId: string, instanceId: string, ttlMs: number): Promise<boolean>;
+    tryAcquireOrRenewLayerLock(layerId: string, instanceId: string, ttlMs: number): Promise<boolean>;
     publishLayerUpdate(layerId: string, message: LayerUpdateMessage): Promise<void>;
     subscribeToLayerUpdates(layerIds: string[], handler: (message: LayerUpdateMessage) => void): Promise<void>;
     onModuleDestroy(): Promise<void>;

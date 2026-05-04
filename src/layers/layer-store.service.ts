@@ -13,7 +13,7 @@ import { LayerSnapshot, LayerUpdateMessage } from './layer.types.js';
  * Redis key schema:
  *   layer:{layerId}:latest   — JSON-serialised LayerSnapshot
  *   layer:{layerId}:hash     — SHA-256 content hash
- *   layer:{layerId}:lock     — distributed lock (SET NX PX)
+ *   layer:{layerId}:lock     — distributed lock owner id
  *
  * Redis Pub/Sub channel:
  *   layer:{layerId}:updates  — LayerUpdateMessage JSON
@@ -71,26 +71,37 @@ export class LayerStoreService implements OnModuleDestroy {
   // ---------------------------------------------------------------------------
 
   /**
-   * Attempt to acquire a distributed lock for a layer.
+   * Attempt to acquire or renew a distributed lock for a layer.
    *
-   * Uses `SET key value NX PX ttlMs` so that only one pod can hold the
-   * lock at a time and it auto-expires if the holder crashes.
+   * Acquires the lock when it is empty, or renews the lock when this
+   * instance already owns it. Other instances are blocked until the
+   * current owner's lock expires.
    *
-   * @returns `true` if the lock was acquired, `false` otherwise.
+   * @returns `true` if the lock was acquired or renewed, `false` otherwise.
    */
-  async tryAcquireLayerLock(
+  async tryAcquireOrRenewLayerLock(
     layerId: string,
     instanceId: string,
     ttlMs: number,
   ): Promise<boolean> {
-    const result = await this.redis.set(
+    const result = await this.redis.eval(
+      `
+        local currentOwner = redis.call("GET", KEYS[1])
+
+        if not currentOwner or currentOwner == ARGV[1] then
+          redis.call("SET", KEYS[1], ARGV[1], "PX", ARGV[2])
+          return 1
+        end
+
+        return 0
+      `,
+      1,
       `layer:${layerId}:lock`,
       instanceId,
-      'PX',
       ttlMs,
-      'NX',
     );
-    return result === 'OK';
+
+    return result === 1;
   }
 
   // ---------------------------------------------------------------------------
@@ -149,9 +160,7 @@ export class LayerStoreService implements OnModuleDestroy {
     });
 
     await this.redisSub.subscribe(...channels);
-    this.logger.log(
-      `Subscribed to Redis channels: ${channels.join(', ')}`,
-    );
+    this.logger.log(`Subscribed to Redis channels: ${channels.join(', ')}`);
   }
 
   // ---------------------------------------------------------------------------

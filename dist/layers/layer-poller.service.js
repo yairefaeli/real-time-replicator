@@ -65,12 +65,12 @@ let LayerPollerService = LayerPollerService_1 = class LayerPollerService {
     }
     async pollLayer(layer, lockTtlMs) {
         try {
-            const acquired = await this.store.tryAcquireLayerLock(layer.id, this.instanceId, lockTtlMs);
-            if (!acquired)
+            const acquired = await this.store.tryAcquireOrRenewLayerLock(layer.id, this.instanceId, lockTtlMs);
+            if (!acquired) {
+                this.logger.debug(`Layer "${layer.id}" lock not acquired — another pod is handling this layer.`);
                 return;
-            this.logger.debug(`Layer "${layer.id}" acquired lock.`);
+            }
             const rawData = await this.externalClient.fetchLayerData(layer.url);
-            this.logger.debug(`Layer "${layer.id}" fetched data.`);
             const normalized = normalizeLayer(rawData);
             const newHash = (0, layer_hash_util_js_1.computeLayerHash)(normalized);
             const existingHash = await this.store.getHash(layer.id);
