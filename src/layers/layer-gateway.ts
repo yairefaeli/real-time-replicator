@@ -7,7 +7,7 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { LayerConfigService } from './layer-config.service.js';
+import { LayerConfigService } from './config/layer-config.service.js';
 import { LayerStoreService } from './layer-store.service.js';
 import { LayerUpdateMessage } from './layer.types.js';
 
@@ -48,7 +48,9 @@ export class LayerGateway implements OnModuleInit {
     const layerIds = enabledLayers.map((l) => l.id);
 
     if (layerIds.length === 0) {
-      this.logger.warn('No enabled layers — skipping Redis Pub/Sub subscription.');
+      this.logger.warn(
+        'No enabled layers — skipping Redis Pub/Sub subscription.',
+      );
       return;
     }
 
@@ -151,8 +153,6 @@ export class LayerGateway implements OnModuleInit {
   private onLayerUpdate(message: LayerUpdateMessage): void {
     const room = `layer:${message.layerId}`;
     this.server.to(room).emit('layer.updated', message);
-    this.logger.debug?.(
-      `Broadcast layer.updated to room ${room}`,
-    );
+    this.logger.debug?.(`Broadcast layer.updated to room ${room}`);
   }
 }

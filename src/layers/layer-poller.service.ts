@@ -9,7 +9,7 @@ import { EMPTY, Observable, Subject, Subscription, from, timer } from 'rxjs';
 import { catchError, exhaustMap, takeUntil } from 'rxjs/operators';
 import { ExternalLayerClientService } from './external-layer-client.service.js';
 import { computeLayerHash } from './layer-hash.util.js';
-import { LayerConfigService } from './layer-config.service.js';
+import { LayerConfigService } from './config/layer-config.service.js';
 import { LayerStoreService } from './layer-store.service.js';
 import {
   LayerConfig,
