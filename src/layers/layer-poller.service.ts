@@ -5,7 +5,7 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { EMPTY, Observable, Subject, Subscription, from, timer } from 'rxjs';
+import { EMPTY, Subject, Subscription, from, timer } from 'rxjs';
 import { catchError, exhaustMap, takeUntil } from 'rxjs/operators';
 import { ExternalLayerClientService } from './external-layer-client.service.js';
 import { computeLayerHash } from './utils/layer-hash.util.js';
