@@ -106,6 +106,17 @@ npm install
 | `PORT` | `3000` | HTTP & WebSocket server port |
 | `REDIS_HOST` | `127.0.0.1` | Redis host |
 | `REDIS_PORT` | `6379` | Redis port |
+| `LAYERS` | mock `roads` layer | JSON array of layer configs |
+
+Example:
+
+```bash
+LAYERS='[
+  {"id":"roads","url":"http://localhost:4001/mock/roads","intervalMs":10000,"enabled":true},
+  {"id":"weather","url":"http://localhost:4001/mock/weather","intervalMs":50000,"enabled":true},
+  {"id":"vehicles","url":"http://localhost:4001/mock/vehicles","intervalMs":10000,"enabled":true}
+]'
+```
 
 ## Local Development
 
@@ -189,15 +200,12 @@ socket.on("layer.error", (err) => {
 
 ## Adding a New Layer
 
-Add an entry to the config array in `layer-config.service.ts`:
+Add an entry to the `LAYERS` environment variable:
 
-```typescript
-{
-  id: 'traffic',
-  url: 'https://example.com/traffic',
-  intervalMs: 3000,
-  enabled: true,
-}
+```bash
+LAYERS='[
+  {"id":"traffic","url":"https://example.com/traffic","intervalMs":3000,"enabled":true}
+]'
 ```
 
 The poller and gateway will automatically pick it up on restart.
@@ -214,4 +222,3 @@ The poller and gateway will automatically pick it up on restart.
 | `npm run test` | Run unit tests |
 | `npm run mock:api` | Start mock external API on port 4001 |
 | `npm run mock:client` | Start mock WebSocket test client |
-
