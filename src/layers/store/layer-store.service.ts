@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import Redis from 'ioredis';
-import { LayerSnapshot, LayerUpdateMessage } from '../layer.types.js';
+import { LayerSnapshot, LayerUpdateMessage } from '../types/layer.types.js';
 
 /**
  * Redis-backed store for layer data.

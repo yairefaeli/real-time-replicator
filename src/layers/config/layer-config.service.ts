@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { LayerConfig } from '../layer.types.js';
+import { LayerConfig } from '../types/layer.types.js';
 
 /**
  * Provides layer configuration to the rest of the application.

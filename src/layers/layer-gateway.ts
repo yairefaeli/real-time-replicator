@@ -9,7 +9,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { LayerConfigService } from './config/layer-config.service.js';
 import { LayerStoreService } from './store/layer-store.service.js';
-import { LayerUpdateMessage } from './layer.types.js';
+import { LayerUpdateMessage } from './types/layer.types.js';
 
 /**
  * WebSocket gateway for real-time layer updates.
