@@ -9,7 +9,7 @@ import { LayerConfig } from '../types/layer.types.js';
  * remote configuration service without changing the consumer API.
  */
 @Injectable()
-export class LayerConfigService {
+export class ConfigService {
   private readonly mockApiBaseUrl =
     process.env['MOCK_API_BASE_URL'] ?? 'http://localhost:4001';
 

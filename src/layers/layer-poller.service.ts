@@ -9,7 +9,7 @@ import { EMPTY, Observable, Subject, Subscription, from, timer } from 'rxjs';
 import { catchError, exhaustMap, takeUntil } from 'rxjs/operators';
 import { ExternalLayerClientService } from './external-layer-client.service.js';
 import { computeLayerHash } from './utils/layer-hash.util.js';
-import { LayerConfigService } from './config/layer-config.service.js';
+import { ConfigService } from './config/config.service.js';
 import { StoreService } from './store/store.service.js';
 import {
   LayerConfig,
@@ -53,7 +53,7 @@ export class LayerPollerService implements OnModuleInit, OnModuleDestroy {
   private readonly instanceId = randomUUID();
 
   constructor(
-    private readonly configService: LayerConfigService,
+    private readonly configService: ConfigService,
     private readonly externalClient: ExternalLayerClientService,
     private readonly store: StoreService,
   ) {}
