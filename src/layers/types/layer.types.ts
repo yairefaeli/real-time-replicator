@@ -14,6 +14,9 @@ export interface LayerConfig {
 
   /** Whether this layer is actively polled. */
   enabled: boolean;
+
+  /** Whether unchanged payloads should be skipped using hash comparison. */
+  changeDetection: boolean;
 }
 
 /**

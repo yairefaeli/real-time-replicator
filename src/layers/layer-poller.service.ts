@@ -35,9 +35,9 @@ function normalizeLayer(data: unknown): unknown {
  *   2. Acquires a distributed Redis lock — if another pod holds it, the
  *      tick is skipped (single-writer guarantee).
  *   3. Fetches data from the external API.
- *   4. Normalises and hashes the response.
- *   5. Compares with the stored hash — if unchanged, no publish.
- *   6. On change: saves snapshot + hash to Redis and publishes via Pub/Sub.
+ *   4. Normalises the response.
+ *   5. If change detection is enabled, hashes and skips unchanged payloads.
+ *   6. Saves snapshot to Redis and publishes via Pub/Sub.
  *
  * Design choices:
  *   - `exhaustMap` prevents overlapping fetches within a single layer.
@@ -148,15 +148,19 @@ export class LayerPollerService implements OnModuleInit, OnModuleDestroy {
       // 3. Normalise
       const normalized = normalizeLayer(rawData);
 
-      // 4. Compute hash and compare
-      const newHash = computeLayerHash(normalized);
-      const existingHash = await this.store.getHash(layer.id);
+      let newHash: string | undefined;
 
-      if (newHash === existingHash) {
-        this.logger.debug?.(
-          `Layer "${layer.id}" unchanged — skipping publish.`,
-        );
-        return;
+      // 4. Compute hash and compare when change detection is enabled
+      if (layer.changeDetection) {
+        newHash = computeLayerHash(normalized);
+        const existingHash = await this.store.getHash(layer.id);
+
+        if (newHash === existingHash) {
+          this.logger.debug?.(
+            `Layer "${layer.id}" unchanged — skipping publish.`,
+          );
+          return;
+        }
       }
 
       // 5. Build snapshot
@@ -169,7 +173,9 @@ export class LayerPollerService implements OnModuleInit, OnModuleDestroy {
 
       // 6. Persist to Redis
       await this.store.setLatest(layer.id, snapshot);
-      await this.store.setHash(layer.id, newHash);
+      if (newHash) {
+        await this.store.setHash(layer.id, newHash);
+      }
 
       // 7. Publish update
       const message: LayerUpdateMessage = {

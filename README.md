@@ -1,6 +1,6 @@
 # Real-Time Replicator
 
-A NestJS service that polls multiple external APIs for configurable data layers, deduplicates payloads via content hashing, and broadcasts changes to WebSocket clients in real time.
+A NestJS service that polls multiple external APIs for configurable data layers, optionally deduplicates payloads via content hashing, and broadcasts changes to WebSocket clients in real time.
 
 ## Architecture
 
@@ -60,7 +60,7 @@ A NestJS service that polls multiple external APIs for configurable data layers,
 | One writer per layer | Redis distributed lock (`SET NX PX`) |
 | No overlapping polls | `exhaustMap` in RxJS stream |
 | Independent layers | Separate `timer()` stream per layer |
-| No unchanged broadcasts | SHA-256 hash comparison before publish |
+| Optional unchanged broadcast skipping | Per-layer SHA-256 hash comparison before publish |
 | Multi-pod broadcasting | Redis Pub/Sub → all pods receive updates |
 | Graceful shutdown | `takeUntil(destroy$)` + `OnModuleDestroy` |
 | Stream resilience | `catchError` inside projection — timer survives errors |
@@ -112,11 +112,13 @@ Example:
 
 ```bash
 LAYERS='[
-  {"id":"roads","url":"http://localhost:4001/mock/roads","intervalMs":10000,"enabled":true},
-  {"id":"weather","url":"http://localhost:4001/mock/weather","intervalMs":50000,"enabled":true},
-  {"id":"vehicles","url":"http://localhost:4001/mock/vehicles","intervalMs":10000,"enabled":true}
+  {"id":"roads","url":"http://localhost:4001/mock/roads","intervalMs":10000,"enabled":true,"changeDetection":true},
+  {"id":"weather","url":"http://localhost:4001/mock/weather","intervalMs":50000,"enabled":true,"changeDetection":true},
+  {"id":"vehicles","url":"http://localhost:4001/mock/vehicles","intervalMs":10000,"enabled":true,"changeDetection":false}
 ]'
 ```
+
+`changeDetection` defaults to `true`. When it is `true`, unchanged payloads are skipped using a SHA-256 hash comparison. When it is `false`, every successful poll writes the latest snapshot to Redis and publishes an update.
 
 ## Local Development
 
@@ -204,7 +206,7 @@ Add an entry to the `LAYERS` environment variable:
 
 ```bash
 LAYERS='[
-  {"id":"traffic","url":"https://example.com/traffic","intervalMs":3000,"enabled":true}
+  {"id":"traffic","url":"https://example.com/traffic","intervalMs":3000,"enabled":true,"changeDetection":true}
 ]'
 ```
 

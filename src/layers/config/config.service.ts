@@ -61,6 +61,7 @@ export class ConfigService {
     const url = rawLayer['url'];
     const intervalMs = rawLayer['intervalMs'];
     const enabled = rawLayer['enabled'];
+    const changeDetection = rawLayer['changeDetection'];
 
     if (typeof id !== 'string' || id.trim() === '') {
       throw new Error(
@@ -90,11 +91,21 @@ export class ConfigService {
       );
     }
 
+    if (
+      changeDetection !== undefined &&
+      typeof changeDetection !== 'boolean'
+    ) {
+      throw new Error(
+        `Invalid LAYERS[${index}].changeDetection: expected a boolean when provided.`,
+      );
+    }
+
     return {
       id,
       url,
       intervalMs,
       enabled: enabled ?? true,
+      changeDetection: changeDetection ?? true,
     };
   }
 
@@ -106,6 +117,7 @@ export class ConfigService {
           process.env['LAYER_ROADS_URL'] ?? `${this.mockApiBaseUrl}/mock/roads`,
         intervalMs: 10000,
         enabled: true,
+        changeDetection: true,
       },
       // {
       //   id: 'weather',
