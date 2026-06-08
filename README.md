@@ -73,11 +73,16 @@ src/
 ├── main.ts
 └── layers/
     ├── layer.module.ts
-    ├── layer.types.ts
-    ├── layer-config.service.ts
-    ├── layer-hash.util.ts
-    ├── external-layer-client.service.ts
-    ├── layer-store.service.ts
+    ├── config/
+    ├── fetchers/
+    │   ├── layer-data-fetcher.interface.ts
+    │   ├── layer-data-fetcher.registry.ts
+    │   ├── roads-layer-fetcher.service.ts
+    │   ├── weather-layer-fetcher.service.ts
+    │   └── vehicles-layer-fetcher.service.ts
+    ├── store/
+    ├── types/
+    ├── utils/
     ├── layer-poller.service.ts
     └── layer-gateway.ts
 mocks/
@@ -106,17 +111,25 @@ npm install
 | `PORT` | `3000` | HTTP & WebSocket server port |
 | `REDIS_HOST` | `127.0.0.1` | Redis host |
 | `REDIS_PORT` | `6379` | Redis port |
-| `LAYERS` | mock `roads` layer | JSON array of layer configs |
+| `LAYERS` | mock `roads`, `weather`, and `vehicles` layers | JSON array of layer configs |
+| `LAYER_ROADS_URL` | `http://localhost:4001/mock/roads` | Roads layer upstream URL |
+| `LAYER_ROADS_API_KEY` | unset | Optional roads layer bearer token |
+| `LAYER_WEATHER_URL` | `http://localhost:4001/mock/weather` | Weather layer upstream URL |
+| `LAYER_WEATHER_API_KEY` | unset | Optional weather layer bearer token |
+| `LAYER_VEHICLES_URL` | `http://localhost:4001/mock/vehicles` | Vehicles layer upstream URL |
+| `LAYER_VEHICLES_API_KEY` | unset | Optional vehicles layer bearer token |
 
 Example:
 
 ```bash
 LAYERS='[
-  {"id":"roads","url":"http://localhost:4001/mock/roads","intervalMs":10000,"enabled":true,"changeDetection":true},
-  {"id":"weather","url":"http://localhost:4001/mock/weather","intervalMs":50000,"enabled":true,"changeDetection":true},
-  {"id":"vehicles","url":"http://localhost:4001/mock/vehicles","intervalMs":10000,"enabled":true,"changeDetection":false}
+  {"id":"roads","intervalMs":10000,"enabled":true,"changeDetection":true},
+  {"id":"weather","intervalMs":50000,"enabled":true,"changeDetection":true},
+  {"id":"vehicles","intervalMs":10000,"enabled":true,"changeDetection":false}
 ]'
 ```
+
+Layer URLs, API keys, headers, request params, and response quirks belong in each layer-specific fetcher service. `LAYERS` controls polling behavior and must use ids that have registered fetchers.
 
 `changeDetection` defaults to `true`. When it is `true`, unchanged payloads are skipped using a SHA-256 hash comparison. When it is `false`, every successful poll writes the latest snapshot to Redis and publishes an update.
 
@@ -202,15 +215,15 @@ socket.on("layer.error", (err) => {
 
 ## Adding a New Layer
 
-Add an entry to the `LAYERS` environment variable:
+Create a service that implements `LayerDataFetcher`, register it in `LayerModule`, then add an entry to the `LAYERS` environment variable using the same `layerId`.
 
 ```bash
 LAYERS='[
-  {"id":"traffic","url":"https://example.com/traffic","intervalMs":3000,"enabled":true,"changeDetection":true}
+  {"id":"traffic","intervalMs":3000,"enabled":true,"changeDetection":true}
 ]'
 ```
 
-The poller and gateway will automatically pick it up on restart.
+The poller and gateway will automatically pick up registered, enabled layers on restart.
 
 ## Scripts
 

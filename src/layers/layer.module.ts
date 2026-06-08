@@ -1,6 +1,13 @@
 import { Module } from '@nestjs/common';
-import { ExternalLayerClientService } from './external-layer-client.service.js';
 import { ConfigService } from './config/config.service.js';
+import {
+  LAYER_DATA_FETCHERS,
+  LayerDataFetcher,
+} from './fetchers/layer-data-fetcher.interface.js';
+import { LayerDataFetcherRegistry } from './fetchers/layer-data-fetcher.registry.js';
+import { RoadsLayerFetcherService } from './fetchers/roads-layer-fetcher.service.js';
+import { VehiclesLayerFetcherService } from './fetchers/vehicles-layer-fetcher.service.js';
+import { WeatherLayerFetcherService } from './fetchers/weather-layer-fetcher.service.js';
 import { LayerGateway } from './layer-gateway.js';
 import { LayerPollerService } from './layer-poller.service.js';
 import { StoreService } from './store/store.service.js';
@@ -8,7 +15,27 @@ import { StoreService } from './store/store.service.js';
 @Module({
   providers: [
     ConfigService,
-    ExternalLayerClientService,
+    RoadsLayerFetcherService,
+    WeatherLayerFetcherService,
+    VehiclesLayerFetcherService,
+    {
+      provide: LAYER_DATA_FETCHERS,
+      useFactory: (
+        roadsLayerFetcher: RoadsLayerFetcherService,
+        weatherLayerFetcher: WeatherLayerFetcherService,
+        vehiclesLayerFetcher: VehiclesLayerFetcherService,
+      ): LayerDataFetcher[] => [
+        roadsLayerFetcher,
+        weatherLayerFetcher,
+        vehiclesLayerFetcher,
+      ],
+      inject: [
+        RoadsLayerFetcherService,
+        WeatherLayerFetcherService,
+        VehiclesLayerFetcherService,
+      ],
+    },
+    LayerDataFetcherRegistry,
     StoreService,
     LayerPollerService,
     LayerGateway,

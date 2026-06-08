@@ -1,13 +1,10 @@
 /**
  * Configuration for a single data layer.
- * Each layer defines an external API endpoint to poll at a given interval.
+ * Each layer defines which registered fetcher to poll and at what interval.
  */
 export interface LayerConfig {
   /** Unique identifier for this layer (e.g. "roads", "weather"). */
   id: string;
-
-  /** External API URL to poll for data. */
-  url: string;
 
   /** Polling interval in milliseconds. */
   intervalMs: number;

@@ -7,9 +7,10 @@ import {
 import { randomUUID } from 'crypto';
 import { EMPTY, Subject, Subscription, from, timer } from 'rxjs';
 import { catchError, exhaustMap, takeUntil } from 'rxjs/operators';
-import { ExternalLayerClientService } from './external-layer-client.service.js';
 import { computeLayerHash } from './utils/layer-hash.util.js';
 import { ConfigService } from './config/config.service.js';
+import { LayerDataFetcher } from './fetchers/layer-data-fetcher.interface.js';
+import { LayerDataFetcherRegistry } from './fetchers/layer-data-fetcher.registry.js';
 import { StoreService } from './store/store.service.js';
 import {
   LayerConfig,
@@ -27,6 +28,25 @@ function normalizeLayer(data: unknown): unknown {
   return data;
 }
 
+function getLayerSizeMb(data: unknown): number {
+  return Buffer.byteLength(JSON.stringify(data), 'utf8') / 1024 / 1024;
+}
+
+function getEntityCount(data: unknown): number | null {
+  if (Array.isArray(data)) {
+    return data.length;
+  }
+
+  if (data && typeof data === 'object') {
+    const features = (data as Record<string, unknown>)['features'];
+    if (Array.isArray(features)) {
+      return features.length;
+    }
+  }
+
+  return null;
+}
+
 /**
  * Creates and manages one independent RxJS polling stream per enabled layer.
  *
@@ -34,7 +54,7 @@ function normalizeLayer(data: unknown): unknown {
  *   1. Fires on `timer(0, intervalMs)`.
  *   2. Acquires a distributed Redis lock — if another pod holds it, the
  *      tick is skipped (single-writer guarantee).
- *   3. Fetches data from the external API.
+ *   3. Fetches data through the layer-specific fetcher service.
  *   4. Normalises the response.
  *   5. If change detection is enabled, hashes and skips unchanged payloads.
  *   6. Saves snapshot to Redis and publishes via Pub/Sub.
@@ -54,7 +74,7 @@ export class LayerPollerService implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     private readonly configService: ConfigService,
-    private readonly externalClient: ExternalLayerClientService,
+    private readonly layerDataFetchers: LayerDataFetcherRegistry,
     private readonly store: StoreService,
   ) {}
 
@@ -72,8 +92,13 @@ export class LayerPollerService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    for (const layer of enabledLayers) {
-      this.startLayerPolling(layer);
+    const layerFetchers = enabledLayers.map((layer) => ({
+      layer,
+      fetcher: this.layerDataFetchers.getFetcher(layer.id),
+    }));
+
+    for (const { layer, fetcher } of layerFetchers) {
+      this.startLayerPolling(layer, fetcher);
     }
 
     this.logger.log(
@@ -92,13 +117,16 @@ export class LayerPollerService implements OnModuleInit, OnModuleDestroy {
   // Polling stream
   // ---------------------------------------------------------------------------
 
-  private startLayerPolling(layer: LayerConfig): void {
+  private startLayerPolling(
+    layer: LayerConfig,
+    fetcher: LayerDataFetcher,
+  ): void {
     const lockTtlMs = layer.intervalMs * 2;
 
     const sub = timer(0, layer.intervalMs)
       .pipe(
         exhaustMap(() =>
-          from(this.pollLayer(layer, lockTtlMs)).pipe(
+          from(this.pollLayer(layer, fetcher, lockTtlMs)).pipe(
             catchError((err) => {
               // Safety net: if pollLayer throws past its own try/catch
               // (e.g. a synchronous error before the try block), the
@@ -127,6 +155,7 @@ export class LayerPollerService implements OnModuleInit, OnModuleDestroy {
    */
   private async pollLayer(
     layer: LayerConfig,
+    fetcher: LayerDataFetcher,
     lockTtlMs: number,
   ): Promise<void> {
     try {
@@ -143,10 +172,16 @@ export class LayerPollerService implements OnModuleInit, OnModuleDestroy {
         return; // Another pod is handling this layer
       }
       // 2. Fetch external data
-      const rawData = await this.externalClient.fetchLayerData(layer.url);
+      const rawData = await fetcher.fetchLayerData();
 
       // 3. Normalise
       const normalized = normalizeLayer(rawData);
+      const layerSizeMb = getLayerSizeMb(normalized);
+      const entityCount = getEntityCount(normalized);
+
+      this.logger.log(
+        `Layer "${layer.id}" payload size: ${layerSizeMb.toFixed(3)} MB; entities: ${entityCount ?? 'unknown'}.`,
+      );
 
       let newHash: string | undefined;
 

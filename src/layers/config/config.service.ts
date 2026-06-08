@@ -6,9 +6,6 @@ import { LayerConfig } from '../types/layer.types.js';
  */
 @Injectable()
 export class ConfigService {
-  private readonly mockApiBaseUrl =
-    process.env['MOCK_API_BASE_URL'] ?? 'http://localhost:4001';
-
   private readonly layers: LayerConfig[] = this.loadLayers();
 
   /** Return all configured layers (enabled and disabled). */
@@ -58,7 +55,6 @@ export class ConfigService {
 
     const rawLayer = layer as Record<string, unknown>;
     const id = rawLayer['id'];
-    const url = rawLayer['url'];
     const intervalMs = rawLayer['intervalMs'];
     const enabled = rawLayer['enabled'];
     const changeDetection = rawLayer['changeDetection'];
@@ -66,12 +62,6 @@ export class ConfigService {
     if (typeof id !== 'string' || id.trim() === '') {
       throw new Error(
         `Invalid LAYERS[${index}].id: expected a non-empty string.`,
-      );
-    }
-
-    if (typeof url !== 'string' || url.trim() === '') {
-      throw new Error(
-        `Invalid LAYERS[${index}].url: expected a non-empty string.`,
       );
     }
 
@@ -91,10 +81,7 @@ export class ConfigService {
       );
     }
 
-    if (
-      changeDetection !== undefined &&
-      typeof changeDetection !== 'boolean'
-    ) {
+    if (changeDetection !== undefined && typeof changeDetection !== 'boolean') {
       throw new Error(
         `Invalid LAYERS[${index}].changeDetection: expected a boolean when provided.`,
       );
@@ -102,7 +89,6 @@ export class ConfigService {
 
     return {
       id,
-      url,
       intervalMs,
       enabled: enabled ?? true,
       changeDetection: changeDetection ?? true,
@@ -113,28 +99,22 @@ export class ConfigService {
     return [
       {
         id: 'roads',
-        url:
-          process.env['LAYER_ROADS_URL'] ?? `${this.mockApiBaseUrl}/mock/roads`,
         intervalMs: 10000,
         enabled: true,
         changeDetection: true,
       },
-      // {
-      //   id: 'weather',
-      //   url:
-      //     process.env['LAYER_WEATHER_URL'] ??
-      //     `${this.mockApiBaseUrl}/mock/weather`,
-      //   intervalMs: 50000,
-      //   enabled: true,
-      // },
-      // {
-      //   id: 'vehicles',
-      //   url:
-      //     process.env['LAYER_VEHICLES_URL'] ??
-      //     `${this.mockApiBaseUrl}/mock/vehicles`,
-      //   intervalMs: 10000,
-      //   enabled: true,
-      // },
+      {
+        id: 'weather',
+        intervalMs: 50000,
+        enabled: true,
+        changeDetection: true,
+      },
+      {
+        id: 'vehicles',
+        intervalMs: 10000,
+        enabled: true,
+        changeDetection: true,
+      },
     ];
   }
 }
