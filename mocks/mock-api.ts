@@ -78,21 +78,104 @@ const generators: Record<string, (v: number) => unknown> = {
   vehicles: generateVehicles,
 };
 
+interface GraphqlRequest {
+  query?: unknown;
+  variables?: {
+    stable?: unknown;
+  };
+}
+
+function readJsonBody(req: http.IncomingMessage): Promise<GraphqlRequest> {
+  return new Promise((resolve, reject) => {
+    let body = '';
+
+    req.setEncoding('utf8');
+    req.on('data', (chunk: string) => {
+      body += chunk;
+    });
+    req.on('end', () => {
+      if (!body.trim()) {
+        resolve({});
+        return;
+      }
+
+      try {
+        resolve(JSON.parse(body) as GraphqlRequest);
+      } catch (error) {
+        reject(error);
+      }
+    });
+    req.on('error', reject);
+  });
+}
+
+function getWeatherData(stable: boolean): unknown {
+  if (stable) {
+    return stableSnapshots.weather;
+  }
+
+  counters.weather = (counters.weather ?? 0) + 1;
+  return generateWeather(counters.weather);
+}
+
+function writeJson(
+  res: http.ServerResponse,
+  statusCode: number,
+  body: unknown,
+): void {
+  res.writeHead(statusCode, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(body, null, 2));
+}
+
 // ---------------------------------------------------------------------------
 // HTTP server
 // ---------------------------------------------------------------------------
 
-const server = http.createServer((req, res) => {
+const server = http.createServer(async (req, res) => {
   const url = new URL(req.url ?? '/', `http://localhost:${PORT}`);
   const pathname = url.pathname;
   const stable = url.searchParams.get('stable') === 'true';
 
+  if (pathname === '/graphql') {
+    if (req.method !== 'POST') {
+      writeJson(res, 405, { errors: [{ message: 'Method not allowed' }] });
+      return;
+    }
+
+    try {
+      const requestBody = await readJsonBody(req);
+      const query = typeof requestBody.query === 'string' ? requestBody.query : '';
+
+      if (!query.includes('weather')) {
+        writeJson(res, 400, {
+          errors: [{ message: 'Only the weather query is supported.' }],
+        });
+        return;
+      }
+
+      writeJson(res, 200, {
+        data: {
+          weather: getWeatherData(requestBody.variables?.stable === true),
+        },
+      });
+    } catch (error) {
+      writeJson(res, 400, {
+        errors: [
+          {
+            message: `Invalid GraphQL request: ${(error as Error).message}`,
+          },
+        ],
+      });
+    }
+
+    return;
+  }
+
   // Match /mock/:layerId
-  const match = pathname.match(/^\/mock\/(roads|weather|vehicles)$/);
+  const match = pathname.match(/^\/mock\/(roads|vehicles)$/);
 
   if (!match) {
-    res.writeHead(404, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Not found', path: pathname }));
+    writeJson(res, 404, { error: 'Not found', path: pathname });
     return;
   }
 
@@ -106,15 +189,16 @@ const server = http.createServer((req, res) => {
     data = generators[layerId]!(counters[layerId]!);
   }
 
-  res.writeHead(200, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify(data, null, 2));
+  writeJson(res, 200, data);
 });
 
 server.listen(PORT, () => {
   console.log(`\n🧪 Mock API server running on http://localhost:${PORT}`);
   console.log(`\n   Endpoints:`);
   console.log(`     GET /mock/roads`);
-  console.log(`     GET /mock/weather`);
+  console.log(`     POST /graphql (weather query)`);
   console.log(`     GET /mock/vehicles`);
-  console.log(`\n   Add ?stable=true to return unchanged data.\n`);
+  console.log(
+    `\n   Add ?stable=true to REST endpoints or { "variables": { "stable": true } } to GraphQL to return unchanged data.\n`,
+  );
 });

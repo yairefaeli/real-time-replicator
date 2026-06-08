@@ -114,8 +114,9 @@ npm install
 | `LAYERS` | mock `roads`, `weather`, and `vehicles` layers | JSON array of layer configs |
 | `LAYER_ROADS_URL` | `http://localhost:4001/mock/roads` | Roads layer upstream URL |
 | `LAYER_ROADS_API_KEY` | unset | Optional roads layer bearer token |
-| `LAYER_WEATHER_URL` | `http://localhost:4001/mock/weather` | Weather layer upstream URL |
+| `LAYER_WEATHER_URL` | `http://localhost:4001/graphql` | Weather GraphQL upstream URL |
 | `LAYER_WEATHER_API_KEY` | unset | Optional weather layer bearer token |
+| `LAYER_WEATHER_STABLE` | `false` | Ask the mock weather GraphQL API for unchanged data |
 | `LAYER_VEHICLES_URL` | `http://localhost:4001/mock/vehicles` | Vehicles layer upstream URL |
 | `LAYER_VEHICLES_API_KEY` | unset | Optional vehicles layer bearer token |
 
@@ -154,10 +155,29 @@ This starts a fake external API on `http://localhost:4001` with endpoints:
 | Endpoint | Description |
 |----------|-------------|
 | `GET /mock/roads` | Returns road features with random status/speed |
-| `GET /mock/weather` | Returns weather stations with random conditions |
+| `POST /graphql` | Returns weather stations through the `weather` GraphQL query |
 | `GET /mock/vehicles` | Returns vehicle positions with random coordinates |
 
-Add `?stable=true` to any endpoint to return unchanged data (useful for testing hash dedup).
+Add `?stable=true` to REST endpoints, or send `{"variables":{"stable":true}}` to GraphQL, to return unchanged data (useful for testing hash dedup).
+
+Weather GraphQL example:
+
+```graphql
+query WeatherLayer($stable: Boolean) {
+  weather(stable: $stable) {
+    layerId
+    version
+    timestamp
+    features {
+      id
+      condition
+      temperatureC
+      humidity
+      windSpeedKmh
+    }
+  }
+}
+```
 
 ### Terminal 3 — Start the NestJS App
 
