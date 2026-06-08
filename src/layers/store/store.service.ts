@@ -54,6 +54,10 @@ export class StoreService implements OnModuleDestroy {
     await this.redis.set(`layer:${layerId}:latest`, JSON.stringify(snapshot));
   }
 
+  async ping(): Promise<void> {
+    await this.redis.ping();
+  }
+
   // ---------------------------------------------------------------------------
   // Content hash
   // ---------------------------------------------------------------------------
