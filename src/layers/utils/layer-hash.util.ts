@@ -9,7 +9,5 @@ import { createHash } from 'crypto';
  * becomes an issue with upstream APIs, consider a canonical JSON library.
  */
 export function computeLayerHash(data: unknown): string {
-  return createHash('sha256')
-    .update(JSON.stringify(data))
-    .digest('hex');
+  return createHash('sha256').update(JSON.stringify(data)).digest('hex');
 }

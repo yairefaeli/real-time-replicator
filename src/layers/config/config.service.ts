@@ -15,12 +15,12 @@ export class ConfigService {
 
   /** Return only layers that are actively enabled for polling. */
   getEnabledLayers(): LayerConfig[] {
-    return this.layers.filter((l) => l.enabled);
+    return this.layers.filter((layer) => layer.enabled);
   }
 
   /** Find a layer by its unique id, or undefined if not found. */
   getLayerById(id: string): LayerConfig | undefined {
-    return this.layers.find((l) => l.id === id);
+    return this.layers.find((layer) => layer.id === id);
   }
 
   private loadLayers(): LayerConfig[] {

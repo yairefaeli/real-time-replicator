@@ -102,7 +102,7 @@ export class LayerPollerService implements OnModuleInit, OnModuleDestroy {
     }
 
     this.logger.log(
-      `Started polling for ${enabledLayers.length} layer(s): ${enabledLayers.map((l) => l.id).join(', ')}`,
+      `Started polling for ${enabledLayers.length} layer(s): ${enabledLayers.map((layer) => layer.id).join(', ')}`,
     );
   }
 

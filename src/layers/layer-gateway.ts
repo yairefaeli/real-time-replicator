@@ -45,7 +45,7 @@ export class LayerGateway implements OnModuleInit {
 
   async onModuleInit(): Promise<void> {
     const enabledLayers = this.configService.getEnabledLayers();
-    const layerIds = enabledLayers.map((l) => l.id);
+    const layerIds = enabledLayers.map((layer) => layer.id);
 
     if (layerIds.length === 0) {
       this.logger.warn(
