@@ -11,7 +11,9 @@ import { computeLayerHash } from './utils/layer-hash.util.js';
 import { ConfigService } from './config/config.service.js';
 import { LayerDataFetcher } from './fetchers/layer-data-fetcher.interface.js';
 import { LayerDataFetcherRegistry } from './fetchers/layer-data-fetcher.registry.js';
-import { StoreService } from './store/store.service.js';
+import { LayerLockStore } from './store/layer-lock.store.js';
+import { LayerSnapshotStore } from './store/layer-snapshot.store.js';
+import { LayerUpdateBus } from './store/layer-update-bus.service.js';
 import {
   LayerConfig,
   LayerSnapshot,
@@ -83,7 +85,9 @@ export class LayerPollerService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly configService: ConfigService,
     private readonly layerDataFetchers: LayerDataFetcherRegistry,
-    private readonly store: StoreService,
+    private readonly locks: LayerLockStore,
+    private readonly snapshots: LayerSnapshotStore,
+    private readonly updates: LayerUpdateBus,
   ) {}
 
   // ---------------------------------------------------------------------------
@@ -169,7 +173,7 @@ export class LayerPollerService implements OnModuleInit, OnModuleDestroy {
   ): Promise<void> {
     try {
       // 1. Acquire or renew distributed lock
-      const acquired = await this.store.tryAcquireOrRenewLayerLock(
+      const acquired = await this.locks.tryAcquireOrRenewLayerLock(
         layer.id,
         this.instanceId,
         lockTtlMs,
@@ -197,7 +201,7 @@ export class LayerPollerService implements OnModuleInit, OnModuleDestroy {
       // 4. Compute hash and compare when change detection is enabled
       if (layer.changeDetection) {
         newHash = computeLayerHash(normalized);
-        const existingHash = await this.store.getHash(layer.id);
+        const existingHash = await this.snapshots.getHash(layer.id);
 
         if (newHash === existingHash) {
           this.logger.debug?.(
@@ -216,9 +220,9 @@ export class LayerPollerService implements OnModuleInit, OnModuleDestroy {
       };
 
       // 6. Persist to Redis
-      await this.store.setLatest(layer.id, snapshot);
+      await this.snapshots.setLatest(layer.id, snapshot);
       if (newHash) {
-        await this.store.setHash(layer.id, newHash);
+        await this.snapshots.setHash(layer.id, newHash);
       }
 
       // 7. Publish update
@@ -227,7 +231,7 @@ export class LayerPollerService implements OnModuleInit, OnModuleDestroy {
         data: normalized,
         timestamp: now,
       };
-      await this.store.publishLayerUpdate(layer.id, message);
+      await this.updates.publishLayerUpdate(layer.id, message);
 
       this.logger.log(`Layer "${layer.id}" updated and published.`);
     } catch (error) {

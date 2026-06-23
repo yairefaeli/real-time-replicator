@@ -64,10 +64,7 @@ export class ConfigService {
   getRedisConfig(): RedisConfig {
     return {
       host: this.getEnv('REDIS_HOST') ?? DEFAULT_REDIS_HOST,
-      port: this.parseOptionalPositiveInteger(
-        'REDIS_PORT',
-        DEFAULT_REDIS_PORT,
-      ),
+      port: this.parseOptionalPositiveInteger('REDIS_PORT', DEFAULT_REDIS_PORT),
       retryDelayMs: this.parseOptionalPositiveInteger(
         'REDIS_RETRY_DELAY_MS',
         DEFAULT_REDIS_RETRY_DELAY_MS,

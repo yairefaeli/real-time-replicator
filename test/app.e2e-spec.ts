@@ -3,12 +3,12 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
-import { StoreService } from './../src/layers/store/store.service';
+import { RedisClientService } from './../src/layers/store/redis-client.service';
 
 describe('HealthController (e2e)', () => {
   let app: INestApplication<App>;
   const originalLayers = process.env['LAYERS'];
-  const storeService = {
+  const redisClientService = {
     ping: jest.fn<Promise<void>, []>(),
   };
 
@@ -20,13 +20,13 @@ describe('HealthController (e2e)', () => {
         enabled: false,
       },
     ]);
-    storeService.ping.mockResolvedValue(undefined);
+    redisClientService.ping.mockResolvedValue(undefined);
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
-      .overrideProvider(StoreService)
-      .useValue(storeService)
+      .overrideProvider(RedisClientService)
+      .useValue(redisClientService)
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -64,7 +64,9 @@ describe('HealthController (e2e)', () => {
   });
 
   it('/health/ready (GET) returns unavailable when Redis cannot be reached', () => {
-    storeService.ping.mockRejectedValueOnce(new Error('Redis unavailable'));
+    redisClientService.ping.mockRejectedValueOnce(
+      new Error('Redis unavailable'),
+    );
 
     return request(app.getHttpServer())
       .get('/health/ready')

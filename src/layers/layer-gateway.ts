@@ -8,7 +8,8 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { ConfigService } from './config/config.service.js';
-import { StoreService } from './store/store.service.js';
+import { LayerSnapshotStore } from './store/layer-snapshot.store.js';
+import { LayerUpdateBus } from './store/layer-update-bus.service.js';
 import { LayerUpdateMessage } from './types/layer.types.js';
 
 /**
@@ -20,7 +21,7 @@ import { LayerUpdateMessage } from './types/layer.types.js';
  *   - `layer.error`     — validation or server-side errors
  *
  * The gateway contains **only** WebSocket handling logic — all data
- * operations are delegated to the LayerStoreService.
+ * operations are delegated to focused store and update-bus services.
  *
  * Updates arrive via Redis Pub/Sub so every pod (not just the one that
  * polled) can broadcast to its connected clients.
@@ -36,14 +37,15 @@ export class LayerGateway implements OnModuleInit {
 
   constructor(
     private readonly configService: ConfigService,
-    private readonly store: StoreService,
+    private readonly snapshots: LayerSnapshotStore,
+    private readonly updates: LayerUpdateBus,
   ) {}
 
   // ---------------------------------------------------------------------------
   // Lifecycle
   // ---------------------------------------------------------------------------
 
-  async onModuleInit(): Promise<void> {
+  onModuleInit(): void {
     const enabledLayers = this.configService.getEnabledLayers();
     const layerIds = enabledLayers.map((layer) => layer.id);
 
@@ -54,7 +56,7 @@ export class LayerGateway implements OnModuleInit {
       return;
     }
 
-    await this.store.subscribeToLayerUpdates(
+    this.updates.subscribeToLayerUpdates(
       layerIds,
       (message: LayerUpdateMessage) => this.onLayerUpdate(message),
     );
@@ -106,7 +108,7 @@ export class LayerGateway implements OnModuleInit {
 
     // Send latest snapshot if available
     try {
-      const snapshot = await this.store.getLatest(layerId);
+      const snapshot = await this.snapshots.getLatest(layerId);
       if (snapshot) {
         client.emit('layer.snapshot', snapshot);
       }

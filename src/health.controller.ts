@@ -1,5 +1,5 @@
 import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
-import { StoreService } from './layers/store/store.service.js';
+import { RedisClientService } from './layers/store/redis-client.service.js';
 
 type HealthStatus = {
   status: 'ok';
@@ -14,7 +14,7 @@ type ReadinessStatus = {
 
 @Controller('health')
 export class HealthController {
-  constructor(private readonly store: StoreService) {}
+  constructor(private readonly redis: RedisClientService) {}
 
   @Get('live')
   getLiveness(): HealthStatus {
@@ -24,7 +24,7 @@ export class HealthController {
   @Get('ready')
   async getReadiness(): Promise<ReadinessStatus> {
     try {
-      await this.store.ping();
+      await this.redis.ping();
       return {
         status: 'ok',
         checks: {

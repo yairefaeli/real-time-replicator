@@ -20,4 +20,4 @@ async function bootstrap() {
   logger.log(`🚀 Real-Time Replicator listening on port ${port}`);
 }
 
-bootstrap();
+void bootstrap();

@@ -64,7 +64,7 @@ describe('ConfigService', () => {
       host: '127.0.0.1',
       port: 6379,
       retryDelayMs: 500,
-      maxRetryDelayMs: 5000,
+      maxRetryDelayMs: 60000,
       maxRetriesPerRequest: 3,
     });
   });

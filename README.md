@@ -112,7 +112,7 @@ npm install
 | `REDIS_HOST` | `127.0.0.1` | Redis host |
 | `REDIS_PORT` | `6379` | Redis port |
 | `REDIS_RETRY_DELAY_MS` | `500` | Base delay for Redis reconnect attempts |
-| `REDIS_MAX_RETRY_DELAY_MS` | `5000` | Maximum delay between Redis reconnect attempts |
+| `REDIS_MAX_RETRY_DELAY_MS` | `60000` | Maximum delay between Redis reconnect attempts |
 | `REDIS_MAX_RETRIES_PER_REQUEST` | `3` | Redis command retries before an individual request fails |
 | `LAYERS` | mock `roads`, `weather`, and `vehicles` layers | JSON array of layer configs |
 | `LAYER_ROADS_URL` | `http://localhost:4001/mock/roads` | Roads layer upstream URL |

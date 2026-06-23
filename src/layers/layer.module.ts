@@ -10,7 +10,10 @@ import { VehiclesLayerFetcherService } from './fetchers/vehicles-layer-fetcher.s
 import { WeatherLayerFetcherService } from './fetchers/weather-layer-fetcher.service.js';
 import { LayerGateway } from './layer-gateway.js';
 import { LayerPollerService } from './layer-poller.service.js';
-import { StoreService } from './store/store.service.js';
+import { LayerLockStore } from './store/layer-lock.store.js';
+import { LayerSnapshotStore } from './store/layer-snapshot.store.js';
+import { LayerUpdateBus } from './store/layer-update-bus.service.js';
+import { RedisClientService } from './store/redis-client.service.js';
 
 @Module({
   providers: [
@@ -36,10 +39,13 @@ import { StoreService } from './store/store.service.js';
       ],
     },
     LayerDataFetcherRegistry,
-    StoreService,
+    RedisClientService,
+    LayerSnapshotStore,
+    LayerLockStore,
+    LayerUpdateBus,
     LayerPollerService,
     LayerGateway,
   ],
-  exports: [ConfigService, StoreService],
+  exports: [ConfigService, RedisClientService],
 })
 export class LayerModule {}

@@ -3,7 +3,9 @@ import { ConfigService } from './config/config.service.js';
 import { LayerDataFetcher } from './fetchers/layer-data-fetcher.interface.js';
 import { LayerDataFetcherRegistry } from './fetchers/layer-data-fetcher.registry.js';
 import { LayerPollerService } from './layer-poller.service.js';
-import { StoreService } from './store/store.service.js';
+import { LayerLockStore } from './store/layer-lock.store.js';
+import { LayerSnapshotStore } from './store/layer-snapshot.store.js';
+import { LayerUpdateBus } from './store/layer-update-bus.service.js';
 import { LayerConfig } from './types/layer.types.js';
 
 describe('LayerPollerService', () => {
@@ -40,7 +42,7 @@ describe('LayerPollerService', () => {
       .mockRejectedValueOnce(new Error('gateway timeout'))
       .mockResolvedValueOnce({ ok: true });
     const publishLayerUpdateMock: jest.MockedFunction<
-      StoreService['publishLayerUpdate']
+      LayerUpdateBus['publishLayerUpdate']
     > = jest.fn().mockResolvedValue(undefined);
 
     const poller = createPoller(fetchLayerDataMock, publishLayerUpdateMock);
@@ -65,7 +67,7 @@ describe('LayerPollerService', () => {
       LayerDataFetcher['fetchLayerData']
     > = jest.fn().mockRejectedValue(new Error('still down'));
     const publishLayerUpdateMock: jest.MockedFunction<
-      StoreService['publishLayerUpdate']
+      LayerUpdateBus['publishLayerUpdate']
     > = jest.fn().mockResolvedValue(undefined);
 
     const poller = createPoller(fetchLayerDataMock, publishLayerUpdateMock);
@@ -89,7 +91,7 @@ describe('LayerPollerService', () => {
   function createPoller(
     fetchLayerDataMock: jest.MockedFunction<LayerDataFetcher['fetchLayerData']>,
     publishLayerUpdateMock: jest.MockedFunction<
-      StoreService['publishLayerUpdate']
+      LayerUpdateBus['publishLayerUpdate']
     >,
   ): LayerPollerService {
     const fetcher: LayerDataFetcher = {
@@ -102,13 +104,25 @@ describe('LayerPollerService', () => {
     const layerDataFetchers = {
       getFetcher: jest.fn(() => fetcher),
     } as unknown as LayerDataFetcherRegistry;
-    const store = {
+    const locks = {
       tryAcquireOrRenewLayerLock: jest.fn().mockResolvedValue(true),
+    } as unknown as LayerLockStore;
+    const snapshots = {
       setLatest: jest.fn().mockResolvedValue(undefined),
+      getHash: jest.fn().mockResolvedValue(null),
+      setHash: jest.fn().mockResolvedValue(undefined),
+    } as unknown as LayerSnapshotStore;
+    const updates = {
       publishLayerUpdate: publishLayerUpdateMock,
-    } as unknown as StoreService;
+    } as unknown as LayerUpdateBus;
 
-    return new LayerPollerService(configService, layerDataFetchers, store);
+    return new LayerPollerService(
+      configService,
+      layerDataFetchers,
+      locks,
+      snapshots,
+      updates,
+    );
   }
 
   function getFetchFailureLogs(): string[] {
