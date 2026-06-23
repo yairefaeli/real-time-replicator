@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { LayerConfig } from '../types/layer.types.js';
 
+const DEFAULT_RETRY_COUNT = 3;
+const DEFAULT_RETRY_INTERVAL_MS = 3000;
+
 /**
  * Provides layer configuration to the rest of the application.
  */
@@ -58,6 +61,8 @@ export class ConfigService {
     const intervalMs = rawLayer['intervalMs'];
     const enabled = rawLayer['enabled'];
     const changeDetection = rawLayer['changeDetection'];
+    const retryCount = rawLayer['retryCount'];
+    const retryIntervalMs = rawLayer['retryIntervalMs'];
 
     if (typeof id !== 'string' || id.trim() === '') {
       throw new Error(
@@ -87,11 +92,42 @@ export class ConfigService {
       );
     }
 
+    if (
+      retryCount !== undefined &&
+      (typeof retryCount !== 'number' ||
+        !Number.isInteger(retryCount) ||
+        retryCount < 0)
+    ) {
+      throw new Error(
+        `Invalid LAYERS[${index}].retryCount: expected a non-negative integer when provided.`,
+      );
+    }
+
+    if (
+      retryIntervalMs !== undefined &&
+      (typeof retryIntervalMs !== 'number' ||
+        !Number.isFinite(retryIntervalMs) ||
+        retryIntervalMs < 0)
+    ) {
+      throw new Error(
+        `Invalid LAYERS[${index}].retryIntervalMs: expected a non-negative number when provided.`,
+      );
+    }
+
+    const parsedRetryCount =
+      retryCount === undefined ? DEFAULT_RETRY_COUNT : retryCount;
+    const parsedRetryIntervalMs =
+      retryIntervalMs === undefined
+        ? DEFAULT_RETRY_INTERVAL_MS
+        : retryIntervalMs;
+
     return {
       id,
       intervalMs,
       enabled: enabled ?? true,
       changeDetection: changeDetection ?? true,
+      retryCount: parsedRetryCount,
+      retryIntervalMs: parsedRetryIntervalMs,
     };
   }
 
@@ -102,18 +138,24 @@ export class ConfigService {
         intervalMs: 10000,
         enabled: true,
         changeDetection: true,
+        retryCount: DEFAULT_RETRY_COUNT,
+        retryIntervalMs: DEFAULT_RETRY_INTERVAL_MS,
       },
       {
         id: 'weather',
         intervalMs: 50000,
         enabled: true,
         changeDetection: true,
+        retryCount: DEFAULT_RETRY_COUNT,
+        retryIntervalMs: DEFAULT_RETRY_INTERVAL_MS,
       },
       {
         id: 'vehicles',
         intervalMs: 10000,
         enabled: true,
         changeDetection: true,
+        retryCount: DEFAULT_RETRY_COUNT,
+        retryIntervalMs: DEFAULT_RETRY_INTERVAL_MS,
       },
     ];
   }

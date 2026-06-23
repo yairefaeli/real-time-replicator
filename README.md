@@ -124,15 +124,17 @@ Example:
 
 ```bash
 LAYERS='[
-  {"id":"roads","intervalMs":10000,"enabled":true,"changeDetection":true},
-  {"id":"weather","intervalMs":50000,"enabled":true,"changeDetection":true},
-  {"id":"vehicles","intervalMs":10000,"enabled":true,"changeDetection":false}
+  {"id":"roads","intervalMs":10000,"enabled":true,"changeDetection":true,"retryCount":3,"retryIntervalMs":3000},
+  {"id":"weather","intervalMs":50000,"enabled":true,"changeDetection":true,"retryCount":3,"retryIntervalMs":3000},
+  {"id":"vehicles","intervalMs":10000,"enabled":true,"changeDetection":false,"retryCount":3,"retryIntervalMs":3000}
 ]'
 ```
 
 Layer URLs, API keys, headers, request params, and response quirks belong in each layer-specific fetcher service. `LAYERS` controls polling behavior and must use ids that have registered fetchers.
 
 `changeDetection` defaults to `true`. When it is `true`, unchanged payloads are skipped using a SHA-256 hash comparison. When it is `false`, every successful poll writes the latest snapshot to Redis and publishes an update.
+
+`retryCount` defaults to `3` and controls how many times a failed fetch is retried after the initial attempt. `retryIntervalMs` defaults to `3000` and controls the delay between those retry attempts. Each failed fetch attempt is logged.
 
 ## Local Development
 

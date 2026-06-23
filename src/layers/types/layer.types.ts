@@ -14,6 +14,12 @@ export interface LayerConfig {
 
   /** Whether unchanged payloads should be skipped using hash comparison. */
   changeDetection: boolean;
+
+  /** Number of fetch retries after the initial attempt fails. */
+  retryCount: number;
+
+  /** Delay between fetch retry attempts in milliseconds. */
+  retryIntervalMs: number;
 }
 
 /**

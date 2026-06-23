@@ -47,6 +47,14 @@ function getEntityCount(data: unknown): number | null {
   return null;
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 /**
  * Creates and manages one independent RxJS polling stream per enabled layer.
  *
@@ -121,7 +129,8 @@ export class LayerPollerService implements OnModuleInit, OnModuleDestroy {
     layer: LayerConfig,
     fetcher: LayerDataFetcher,
   ): void {
-    const lockTtlMs = layer.intervalMs * 2;
+    const lockTtlMs =
+      layer.intervalMs * 2 + layer.retryCount * layer.retryIntervalMs;
 
     const sub = timer(0, layer.intervalMs)
       .pipe(
@@ -172,7 +181,7 @@ export class LayerPollerService implements OnModuleInit, OnModuleDestroy {
         return; // Another pod is handling this layer
       }
       // 2. Fetch external data
-      const rawData = await fetcher.fetchLayerData();
+      const rawData = await this.fetchLayerDataWithRetry(layer, fetcher);
 
       // 3. Normalise
       const normalized = normalizeLayer(rawData);
@@ -223,9 +232,34 @@ export class LayerPollerService implements OnModuleInit, OnModuleDestroy {
       this.logger.log(`Layer "${layer.id}" updated and published.`);
     } catch (error) {
       this.logger.error(
-        `Error polling layer "${layer.id}": ${(error as Error).message}`,
+        `Error polling layer "${layer.id}": ${getErrorMessage(error)}`,
       );
       // Error is caught here — the outer timer stream stays alive.
     }
+  }
+
+  private async fetchLayerDataWithRetry(
+    layer: LayerConfig,
+    fetcher: LayerDataFetcher,
+  ): Promise<unknown> {
+    const maxAttempts = layer.retryCount + 1;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        return await fetcher.fetchLayerData();
+      } catch (error) {
+        this.logger.error(
+          `Failed to fetch layer "${layer.id}" on attempt ${attempt}/${maxAttempts}: ${getErrorMessage(error)}`,
+        );
+
+        if (attempt === maxAttempts) {
+          throw error;
+        }
+
+        await sleep(layer.retryIntervalMs);
+      }
+    }
+
+    throw new Error(`Failed to fetch layer "${layer.id}".`);
   }
 }
