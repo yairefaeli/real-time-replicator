@@ -1,33 +1,117 @@
 import { Injectable } from '@nestjs/common';
+import { LogLevel } from '@nestjs/common/services/logger.service.js';
 import { LayerConfig } from '../types/layer.types.js';
 
 const DEFAULT_RETRY_COUNT = 3;
 const DEFAULT_RETRY_INTERVAL_MS = 3000;
+const DEFAULT_REDIS_HOST = '127.0.0.1';
+const DEFAULT_REDIS_PORT = 6379;
+const DEFAULT_PORT = 3000;
+const DEFAULT_MOCK_API_BASE_URL = 'http://localhost:4001';
+const DEFAULT_LOG_LEVELS: LogLevel[] = ['log', 'error', 'warn', 'debug'];
+const LOG_LEVELS: readonly LogLevel[] = [
+  'log',
+  'error',
+  'warn',
+  'debug',
+  'verbose',
+  'fatal',
+];
+
+export interface RedisConfig {
+  host: string;
+  port: number;
+}
+
+export interface LayerFetcherConfig {
+  url: string;
+  apiKey?: string;
+}
+
+export interface WeatherLayerFetcherConfig extends LayerFetcherConfig {
+  stable: boolean;
+}
 
 /**
  * Provides layer configuration to the rest of the application.
  */
 @Injectable()
 export class ConfigService {
-  private readonly layers: LayerConfig[] = this.loadLayers();
+  private layers?: LayerConfig[];
 
   /** Return all configured layers (enabled and disabled). */
   getLayers(): LayerConfig[] {
+    this.layers ??= this.loadLayers();
     return this.layers;
   }
 
   /** Return only layers that are actively enabled for polling. */
   getEnabledLayers(): LayerConfig[] {
-    return this.layers.filter((layer) => layer.enabled);
+    return this.getLayers().filter((layer) => layer.enabled);
   }
 
   /** Find a layer by its unique id, or undefined if not found. */
   getLayerById(id: string): LayerConfig | undefined {
-    return this.layers.find((layer) => layer.id === id);
+    return this.getLayers().find((layer) => layer.id === id);
+  }
+
+  getRedisConfig(): RedisConfig {
+    return {
+      host: this.getEnv('REDIS_HOST') ?? DEFAULT_REDIS_HOST,
+      port: this.parseOptionalPositiveInteger(
+        'REDIS_PORT',
+        DEFAULT_REDIS_PORT,
+      ),
+    };
+  }
+
+  getPort(): number {
+    return this.parseOptionalPositiveInteger('PORT', DEFAULT_PORT);
+  }
+
+  getLogLevels(): LogLevel[] {
+    const rawLogLevels = this.getEnv('LOG_LEVELS');
+
+    if (!rawLogLevels) {
+      return DEFAULT_LOG_LEVELS;
+    }
+
+    const logLevels = rawLogLevels
+      .split(',')
+      .map((level) => level.trim())
+      .filter((level) => level.length > 0);
+
+    for (const level of logLevels) {
+      if (!LOG_LEVELS.includes(level as LogLevel)) {
+        throw new Error(
+          `Invalid LOG_LEVELS value "${level}". Expected one of: ${LOG_LEVELS.join(', ')}.`,
+        );
+      }
+    }
+
+    return logLevels as LogLevel[];
+  }
+
+  getRoadsLayerFetcherConfig(): LayerFetcherConfig {
+    return this.getRestLayerFetcherConfig('ROADS', '/mock/roads');
+  }
+
+  getVehiclesLayerFetcherConfig(): LayerFetcherConfig {
+    return this.getRestLayerFetcherConfig('VEHICLES', '/mock/vehicles');
+  }
+
+  getWeatherLayerFetcherConfig(): WeatherLayerFetcherConfig {
+    return {
+      url:
+        this.getEnv('LAYER_WEATHER_URL') ??
+        `${this.getMockApiBaseUrl()}/graphql`,
+      apiKey: this.getEnv('LAYER_WEATHER_API_KEY'),
+      stable: this.getEnv('LAYER_WEATHER_STABLE') === 'true',
+    };
   }
 
   private loadLayers(): LayerConfig[] {
-    const layersJson = process.env['LAYERS'];
+    const layersJson = this.getEnv('LAYERS');
 
     if (!layersJson) {
       return this.getDefaultLayers();
@@ -158,5 +242,47 @@ export class ConfigService {
         retryIntervalMs: DEFAULT_RETRY_INTERVAL_MS,
       },
     ];
+  }
+
+  private getRestLayerFetcherConfig(
+    layerName: 'ROADS' | 'VEHICLES',
+    defaultPath: string,
+  ): LayerFetcherConfig {
+    return {
+      url:
+        this.getEnv(`LAYER_${layerName}_URL`) ??
+        `${this.getMockApiBaseUrl()}${defaultPath}`,
+      apiKey: this.getEnv(`LAYER_${layerName}_API_KEY`),
+    };
+  }
+
+  private getMockApiBaseUrl(): string {
+    return this.getEnv('MOCK_API_BASE_URL') ?? DEFAULT_MOCK_API_BASE_URL;
+  }
+
+  private parseOptionalPositiveInteger(name: string, defaultValue: number) {
+    const rawValue = this.getEnv(name);
+
+    if (rawValue === undefined) {
+      return defaultValue;
+    }
+
+    const parsedValue = Number.parseInt(rawValue, 10);
+
+    if (
+      !Number.isInteger(parsedValue) ||
+      parsedValue <= 0 ||
+      parsedValue.toString() !== rawValue
+    ) {
+      throw new Error(
+        `Invalid ${name} environment variable: expected a positive integer.`,
+      );
+    }
+
+    return parsedValue;
+  }
+
+  private getEnv(name: string): string | undefined {
+    return process.env[name];
   }
 }

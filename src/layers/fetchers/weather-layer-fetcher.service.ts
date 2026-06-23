@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios, { AxiosError } from 'axios';
+import { ConfigService } from '../config/config.service.js';
 import { LayerDataFetcher } from './layer-data-fetcher.interface.js';
 
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -32,11 +33,16 @@ export class WeatherLayerFetcherService implements LayerDataFetcher {
   readonly layerId = 'weather';
 
   private readonly logger = new Logger(WeatherLayerFetcherService.name);
-  private readonly mockApiBaseUrl =
-    process.env['MOCK_API_BASE_URL'] ?? 'http://localhost:4001';
-  private readonly url =
-    process.env['LAYER_WEATHER_URL'] ?? `${this.mockApiBaseUrl}/graphql`;
-  private readonly apiKey = process.env['LAYER_WEATHER_API_KEY'];
+  private readonly url: string;
+  private readonly apiKey?: string;
+  private readonly stable: boolean;
+
+  constructor(configService: ConfigService) {
+    const config = configService.getWeatherLayerFetcherConfig();
+    this.url = config.url;
+    this.apiKey = config.apiKey;
+    this.stable = config.stable;
+  }
 
   async fetchLayerData(): Promise<unknown> {
     try {
@@ -45,7 +51,7 @@ export class WeatherLayerFetcherService implements LayerDataFetcher {
         {
           query: WEATHER_QUERY,
           variables: {
-            stable: process.env['LAYER_WEATHER_STABLE'] === 'true',
+            stable: this.stable,
           },
         },
         {

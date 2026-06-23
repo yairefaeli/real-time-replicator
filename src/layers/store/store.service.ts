@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import Redis from 'ioredis';
+import { ConfigService } from '../config/config.service.js';
 import { LayerSnapshot, LayerUpdateMessage } from '../types/layer.types.js';
 
 /**
@@ -25,9 +26,8 @@ export class StoreService implements OnModuleDestroy {
   private readonly redisSub: Redis;
   private isSubscribed = false;
 
-  constructor() {
-    const host = process.env['REDIS_HOST'] ?? '127.0.0.1';
-    const port = parseInt(process.env['REDIS_PORT'] ?? '6379', 10);
+  constructor(configService: ConfigService) {
+    const { host, port } = configService.getRedisConfig();
 
     this.redis = new Redis({ host, port, lazyConnect: false });
     this.redisSub = new Redis({ host, port, lazyConnect: false });
