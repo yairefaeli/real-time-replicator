@@ -6,6 +6,9 @@ const DEFAULT_RETRY_COUNT = 3;
 const DEFAULT_RETRY_INTERVAL_MS = 3000;
 const DEFAULT_REDIS_HOST = '127.0.0.1';
 const DEFAULT_REDIS_PORT = 6379;
+const DEFAULT_REDIS_RETRY_DELAY_MS = 500;
+const DEFAULT_REDIS_MAX_RETRY_DELAY_MS = 60_000;
+const DEFAULT_REDIS_MAX_RETRIES_PER_REQUEST = 3;
 const DEFAULT_PORT = 3000;
 const DEFAULT_MOCK_API_BASE_URL = 'http://localhost:4001';
 const DEFAULT_LOG_LEVELS: LogLevel[] = ['log', 'error', 'warn', 'debug'];
@@ -21,6 +24,9 @@ const LOG_LEVELS: readonly LogLevel[] = [
 export interface RedisConfig {
   host: string;
   port: number;
+  retryDelayMs: number;
+  maxRetryDelayMs: number;
+  maxRetriesPerRequest: number;
 }
 
 export interface LayerFetcherConfig {
@@ -61,6 +67,18 @@ export class ConfigService {
       port: this.parseOptionalPositiveInteger(
         'REDIS_PORT',
         DEFAULT_REDIS_PORT,
+      ),
+      retryDelayMs: this.parseOptionalPositiveInteger(
+        'REDIS_RETRY_DELAY_MS',
+        DEFAULT_REDIS_RETRY_DELAY_MS,
+      ),
+      maxRetryDelayMs: this.parseOptionalPositiveInteger(
+        'REDIS_MAX_RETRY_DELAY_MS',
+        DEFAULT_REDIS_MAX_RETRY_DELAY_MS,
+      ),
+      maxRetriesPerRequest: this.parseOptionalNonNegativeInteger(
+        'REDIS_MAX_RETRIES_PER_REQUEST',
+        DEFAULT_REDIS_MAX_RETRIES_PER_REQUEST,
       ),
     };
   }
@@ -276,6 +294,28 @@ export class ConfigService {
     ) {
       throw new Error(
         `Invalid ${name} environment variable: expected a positive integer.`,
+      );
+    }
+
+    return parsedValue;
+  }
+
+  private parseOptionalNonNegativeInteger(name: string, defaultValue: number) {
+    const rawValue = this.getEnv(name);
+
+    if (rawValue === undefined) {
+      return defaultValue;
+    }
+
+    const parsedValue = Number.parseInt(rawValue, 10);
+
+    if (
+      !Number.isInteger(parsedValue) ||
+      parsedValue < 0 ||
+      parsedValue.toString() !== rawValue
+    ) {
+      throw new Error(
+        `Invalid ${name} environment variable: expected a non-negative integer.`,
       );
     }
 

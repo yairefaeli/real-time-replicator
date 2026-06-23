@@ -63,16 +63,25 @@ describe('ConfigService', () => {
     expect(new ConfigService().getRedisConfig()).toEqual({
       host: '127.0.0.1',
       port: 6379,
+      retryDelayMs: 500,
+      maxRetryDelayMs: 5000,
+      maxRetriesPerRequest: 3,
     });
   });
 
   it('parses Redis config', () => {
     process.env['REDIS_HOST'] = 'redis.internal';
     process.env['REDIS_PORT'] = '6380';
+    process.env['REDIS_RETRY_DELAY_MS'] = '250';
+    process.env['REDIS_MAX_RETRY_DELAY_MS'] = '2000';
+    process.env['REDIS_MAX_RETRIES_PER_REQUEST'] = '5';
 
     expect(new ConfigService().getRedisConfig()).toEqual({
       host: 'redis.internal',
       port: 6380,
+      retryDelayMs: 250,
+      maxRetryDelayMs: 2000,
+      maxRetriesPerRequest: 5,
     });
   });
 
@@ -81,6 +90,14 @@ describe('ConfigService', () => {
 
     expect(() => new ConfigService().getRedisConfig()).toThrow(
       'Invalid REDIS_PORT environment variable',
+    );
+  });
+
+  it('rejects invalid Redis retry config', () => {
+    process.env['REDIS_RETRY_DELAY_MS'] = '-1';
+
+    expect(() => new ConfigService().getRedisConfig()).toThrow(
+      'Invalid REDIS_RETRY_DELAY_MS environment variable',
     );
   });
 
